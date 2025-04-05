@@ -10,6 +10,7 @@ import sys
 import logging
 import pickle
 import os
+import json
 
 # Настройка логирования
 logging.basicConfig(filename='script.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -113,6 +114,27 @@ def create_browser(headless=False):
         options.add_argument("--no-sandbox")
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
+# Функция для загрузки конфигурации классов
+def load_class_config(config_file="config.json"):
+    if not os.path.exists(config_file):
+        print(f"Файл конфигурации ({config_file}) не найден. Создайте его с необходимыми классами.")
+        sys.exit(1)
+    with open(config_file, 'r', encoding='utf-8') as file:
+        return json.load(file)
+
+# Функция для сохранения конфигурации классов
+def save_class_config(config, config_file="config.json"):
+    with open(config_file, 'w', encoding='utf-8') as file:
+        json.dump(config, file, ensure_ascii=False, indent=4)
+    print(f"Конфигурация классов сохранена в {config_file}")
+
+# Загрузка конфигурации классов
+try:
+    class_config = load_class_config()
+except Exception as e:
+    print(f"Ошибка загрузки конфигурации: {e}")
+    sys.exit(1)
+
 # Основная функция парсинга отзывов
 def parse_reviews(urls, output_file="output.xlsx"):
     print("Запускаем Chrome")
@@ -153,8 +175,9 @@ def parse_reviews(urls, output_file="output.xlsx"):
             
             # Сбор всех отзывов
             try:
-                review_blocks_container = driver.find_element(By.XPATH, '//*[@data-widget="webReviewTabs"]')
-                review_blocks = review_blocks_container.find_elements(By.CLASS_NAME, "r9u_32")
+                # Используем классы из конфигурации
+                review_blocks_container = driver.find_element(By.XPATH, class_config["review_blocks_container"])
+                review_blocks = review_blocks_container.find_elements(By.CLASS_NAME, class_config["review_block"])
                 
                 if not review_blocks:
                     print("Блоки отзывов не найдены.")
@@ -166,8 +189,8 @@ def parse_reviews(urls, output_file="output.xlsx"):
             
             for block in review_blocks:
                 try:
-                    review_text_element = block.find_elements(By.CLASS_NAME, "y4p_32")
-                    date_element = block.find_elements(By.CLASS_NAME, "p3y_32")
+                    review_text_element = block.find_elements(By.CLASS_NAME, class_config["review_text"])
+                    date_element = block.find_elements(By.CLASS_NAME, class_config["review_date"])
                     
                     if not review_text_element or not date_element:
                         continue  # Пропускаем блок, если элементы отсутствуют
@@ -198,6 +221,16 @@ def parse_reviews(urls, output_file="output.xlsx"):
 
 # Основная функция
 if __name__ == "__main__":
+    # Пример создания файла конфигурации, если он отсутствует
+    if not os.path.exists("config.json"):
+        default_config = {
+            "review_blocks_container": '//*[@data-widget="webReviewTabs"]',  # Контейнер для блоков отзывов
+            "review_block": "r9u_32",  # Класс для блока отзыва
+            "review_text": "y4p_32",  # Класс для текста отзыва
+            "review_date": "p3y_32"  # Класс для даты отзыва
+        }
+        save_class_config(default_config)
+
     url = input("Введите ссылку на товар: ").strip()
     if not url:
         print("Ошибка: Ссылка не может быть пустой.")

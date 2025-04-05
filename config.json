@@ -1,0 +1,6 @@
+{
+    "review_blocks_container": "//*[@data-widget=\"webReviewTabs\"]", 
+    "review_block": "Название для блока отзыва", 
+    "review_text": "Название для текста отзыва",  
+    "review_date": "Название для даты отзыва"
+}
